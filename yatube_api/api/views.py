@@ -1,16 +1,19 @@
 """Контроллеры."""
 
-from rest_framework import viewsets, generics, status  # type: ignore
+from rest_framework import viewsets, generics, status, filters  # type: ignore
 from rest_framework.pagination import LimitOffsetPagination  # type: ignore
 from django.shortcuts import get_object_or_404  # type: ignore
 from rest_framework.permissions import IsAuthenticated  # type: ignore
 from rest_framework.response import Response  # type: ignore
 from django.contrib.auth import get_user_model  # type: ignore
+from django.http import JsonResponse, Http404  # type: ignore
+from rest_framework.permissions import SAFE_METHODS  # type: ignore
 
 from posts.models import Post, Group, Follow
 from .serializers import (CommentSerializer, FollowSerializer,
                           PostSerializer, GroupSerializer)
 from .permissions import IsAuthorOrReadOnly
+from .exceptions import Error405
 
 User = get_user_model()
 
@@ -59,21 +62,57 @@ class GroupViewSet(PermissionsMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
 
+    def create(self, request):
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def update(self, request, pk=None):
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def partial_update(self, request, pk=None):
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def destroy(self, request, pk=None):
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED) 
+
 
 class FollowView(generics.ListCreateAPIView):
     """Обработка подписок."""
 
-    queryset = Follow.objects.all()
     serializer_class = FollowSerializer
     permission_classes = (IsAuthenticated,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('following__username', 'user__username')
+
+    def get_users(self, request):
+        user = self.request.user.username
+        data = request.POST.get('data')
+        if data and isinstance(data, dict):
+            following = data.get('following')
+        else:
+            following = None    
+        return user, following
+
+    def create(self, request, *args, **kwargs):
+        user, following = self.get_users(request)     
+        if not following or user == following:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        try:
+            get_object_or_404(User, username=following)
+        except:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return super().create(self, request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        """Создание подписки."""
-        user = self.request.user.username
-        following = self.request.POST.get('following')
-        get_object_or_404(User, username=following)
-        if user == following:
-            return Response({"following": "Нельзя подписаться на себя."},
-                            status=status.HTTP_400_BAD_REQUEST)
+        """Создание подписки."""  
+        user, following = self.get_users()
         serializer.save(user=user,
                         following=following)
+        
+    def get_queryset(self):
+        """Список подписок пользователя."""
+        return Follow.objects.filter(user=self.request.user)                 
+    
+
+def page_not_found(request, exception) -> JsonResponse:
+    """Ошибка 404: Объект не найден."""
+    return JsonResponse({"message": "Объект не найден."})

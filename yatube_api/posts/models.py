@@ -6,6 +6,24 @@ from django.db import models  # type: ignore
 User = get_user_model()
 
 
+class Group(models.Model):
+    """Группы."""
+
+    title = models.CharField(max_length=200,
+                             verbose_name='Название')
+    slug = models.SlugField(unique=True,
+                            verbose_name='Слаг')
+    description = models.TextField(
+        verbose_name='Описание',
+    )
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        verbose_name = 'Группы'
+
+
 class Post(models.Model):
     """Модель поста."""
 
@@ -18,6 +36,9 @@ class Post(models.Model):
     image = models.ImageField(
         upload_to='posts/', null=True, blank=True,
         verbose_name='Изображение')
+    group = models.ForeignKey(
+        Group, on_delete=models.CASCADE, related_name='group_posts',
+        verbose_name='Группа', blank=True, null=True)
 
     def __str__(self):
         return self.text
@@ -43,33 +64,15 @@ class Comment(models.Model):
         verbose_name = 'Комментарии'
 
 
-class Group(models.Model):
-    """Группы."""
-
-    title = models.CharField(max_length=200,
-                             verbose_name='Название')
-    slug = models.SlugField(unique=True,
-                            verbose_name='Слаг')
-    description = models.TextField(
-        verbose_name='Описание',
-    )
-
-    def __str__(self):
-        return self.title
-
-    class Meta:
-        verbose_name = 'Группы'
-
-
 class Follow(models.Model):
     """Подписки."""
 
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='follows',
-        verbose_name='Подписчик')
+        verbose_name='Подписчик', editable=True)
     following = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='followers',
-        verbose_name='На кого подписаны')
+        verbose_name='На кого подписаны', editable=True)
 
     class Meta:
         verbose_name = 'Подписки'
