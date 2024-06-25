@@ -1,8 +1,10 @@
-from django.contrib import admin
-from django.urls import include, path
-from django.views.generic import TemplateView
+"""Адреса проекта."""
 
-urlpatterns = [
+from django.contrib import admin  # type: ignore
+from django.urls import include, path  # type: ignore
+from django.views.generic import TemplateView  # type: ignore
+
+urlpatterns: list[path] = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     path(
@@ -11,4 +13,3 @@ urlpatterns = [
         name='redoc'
     ),
 ]
-
