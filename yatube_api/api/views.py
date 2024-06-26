@@ -83,28 +83,32 @@ class FollowView(generics.ListCreateAPIView):
     filter_backends = (filters.SearchFilter,)
     search_fields = ('following__username', 'user__username')
 
-    def get_users(self, request):
-        user = self.request.user.username
-        data = request.POST.get('data')
+    def get_users(self):
+        user = self.request.user
+        username = user.username
+        data = self.request.data
         if data and isinstance(data, dict):
-            following = data.get('following')
+            following_name = data.get('following')
+            try:
+                following = get_object_or_404(
+                    User, username=following_name)
+            except Exception:
+                following = None
         else:
-            following = None    
-        return user, following
+            following_name = None
+            following = None
+        return user, username, following, following_name
 
     def create(self, request, *args, **kwargs):
-        user, following = self.get_users(request)     
-        if not following or user == following:
+        user, username, following, following_name = self.get_users()
+        if (not following or username == following_name
+           or Follow.objects.filter(user=user, following=following)):
             return Response(status=status.HTTP_400_BAD_REQUEST)
-        try:
-            get_object_or_404(User, username=following)
-        except:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        return super().create(self, request, *args, **kwargs)
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        """Создание подписки."""  
-        user, following = self.get_users()
+        """Создание подписки."""
+        user, _, following, _ = self.get_users()
         serializer.save(user=user,
                         following=following)
         
