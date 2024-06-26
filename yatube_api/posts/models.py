@@ -2,6 +2,7 @@
 
 from django.contrib.auth import get_user_model  # type: ignore
 from django.db import models  # type: ignore
+from django.db.models import F, Q  # type: ignore
 
 User = get_user_model()
 
@@ -69,16 +70,21 @@ class Follow(models.Model):
 
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='follows',
-        verbose_name='Подписчик', editable=True)
+        verbose_name='Подписчик', editable=True,
+        null=False, blank=False)
     following = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='followers',
-        verbose_name='На кого подписаны', editable=True)
+        verbose_name='На кого подписаны', editable=True,
+        null=False, blank=False)
 
     class Meta:
         verbose_name = 'Подписки'
+        # Может быть только одна связь между пользователями.
+        unique_together = ('user', 'following')
         constraints = [
+            # Нельзя подписаться на себя.
             models.CheckConstraint(
-                check=models.Q(user__ne=F('following__user')) | models.Q(following__isnull=True),
-                name='user_not_equal_to_following'
-            )
+                            check=~Q(user=F('following')),
+                            name='no_self_follow'
+                        ),
         ]

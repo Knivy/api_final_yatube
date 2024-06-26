@@ -88,43 +88,18 @@ class FollowView(generics.ListCreateAPIView):
     filter_backends = (filters.SearchFilter,)
     search_fields = ('following__username', 'user__username')
 
-    def get_users(self):
-        """Получение пользователей и их имён."""
-        user = self.request.user
-        username = user.username
-        request_data = self.request.data
-        if request_data and isinstance(request_data, dict):
-            following_name = request_data.get('following')
-            if not following_name:
-                following = None
-            try:
-                following = get_object_or_404(
-                    User, username=following_name)
-            except Http404:
-                following = None
-        else:
-            following_name = None
-            following = None
-        return user, username, following, following_name
-
-    def create(self, request, *args, **kwargs):
-        """Создание подписки."""
-        user, username, following, following_name = self.get_users()
-        if (not following or username == following_name
-           or user.follows.filter(following=following)):
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        # Вызываю родительский метод.
-        return super().create(request, *args, **kwargs)
-
-    def perform_create(self, serializer):
-        """Сохранение подписки."""
-        user, _, following, _ = self.get_users()
-        serializer.save(user=user,
-                        following=following)
-
     def get_queryset(self):
         """Список подписок пользователя."""
-        return Follow.objects.filter(user=self.request.user)
+        return self.request.user.follows
+    
+    def perform_create(self, serializer):
+        """Создание подписки."""
+        user = self.request.user
+        data = self.request.POST.get('data')
+        following_name = data.get('following')
+        following = get_object_or_404(User, username=following_name)
+        serializer.save(user=user,
+                        following=following)
 
 
 def page_not_found(request, exception) -> JsonResponse:
