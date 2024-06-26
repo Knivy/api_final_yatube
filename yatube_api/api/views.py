@@ -7,13 +7,11 @@ from rest_framework.permissions import IsAuthenticated  # type: ignore
 from rest_framework.response import Response  # type: ignore
 from django.contrib.auth import get_user_model  # type: ignore
 from django.http import JsonResponse, Http404  # type: ignore
-from rest_framework.permissions import SAFE_METHODS  # type: ignore
 
 from posts.models import Post, Group, Follow
 from .serializers import (CommentSerializer, FollowSerializer,
                           PostSerializer, GroupSerializer)
 from .permissions import IsAuthorOrReadOnly
-from .exceptions import Error405
 
 User = get_user_model()
 
@@ -63,16 +61,20 @@ class GroupViewSet(PermissionsMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = GroupSerializer
 
     def create(self, request):
+        """Доступны только безопасные методы."""
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def update(self, request, pk=None):
+        """Доступны только безопасные методы."""
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def partial_update(self, request, pk=None):
+        """Доступны только безопасные методы."""
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def destroy(self, request, pk=None):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED) 
+        """Доступны только безопасные методы."""
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 class FollowView(generics.ListCreateAPIView):
@@ -84,15 +86,18 @@ class FollowView(generics.ListCreateAPIView):
     search_fields = ('following__username', 'user__username')
 
     def get_users(self):
+        """Получение пользователей и их имён."""
         user = self.request.user
         username = user.username
         data = self.request.data
         if data and isinstance(data, dict):
             following_name = data.get('following')
+            if not following_name:
+                following = None
             try:
                 following = get_object_or_404(
                     User, username=following_name)
-            except Exception:
+            except Http404:
                 following = None
         else:
             following_name = None
@@ -100,6 +105,7 @@ class FollowView(generics.ListCreateAPIView):
         return user, username, following, following_name
 
     def create(self, request, *args, **kwargs):
+        """Создание подписки."""
         user, username, following, following_name = self.get_users()
         if (not following or username == following_name
            or Follow.objects.filter(user=user, following=following)):
@@ -107,15 +113,15 @@ class FollowView(generics.ListCreateAPIView):
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        """Создание подписки."""
+        """Сохранение подписки."""
         user, _, following, _ = self.get_users()
         serializer.save(user=user,
                         following=following)
-        
+
     def get_queryset(self):
         """Список подписок пользователя."""
-        return Follow.objects.filter(user=self.request.user)                 
-    
+        return Follow.objects.filter(user=self.request.user)
+
 
 def page_not_found(request, exception) -> JsonResponse:
     """Ошибка 404: Объект не найден."""

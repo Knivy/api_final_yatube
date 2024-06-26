@@ -13,7 +13,6 @@ router.register(r'posts/(?P<post_id>\d+)/comments', CommentViewSet,
                 basename='comments')
 
 v1_patterns: list[path] = [
-    # По ТЗ не требуется добавление пользователей.
     path('', include('djoser.urls')),
     path('', include('djoser.urls.jwt')),
     path('follow/', FollowView.as_view(), name='follows'),
