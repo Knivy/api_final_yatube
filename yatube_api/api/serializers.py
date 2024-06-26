@@ -58,6 +58,7 @@ class FollowSerializer(serializers.ModelSerializer):
         fields = ('user', 'following')
 
     def save(self, *args, **kwargs):
+        """Сохранение подписки."""
         user = None
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
@@ -71,7 +72,7 @@ class FollowSerializer(serializers.ModelSerializer):
         if request_data and isinstance(request_data, dict):
             following_name = request_data.get('following')
         if not following_name:
-            raise serializers.ValidationError('Не указано, на кого подписка.')      
+            raise serializers.ValidationError('Не указано, на кого подписка.')
         try:
             following = get_object_or_404(User, username=following_name)
         except Http404:
@@ -79,6 +80,7 @@ class FollowSerializer(serializers.ModelSerializer):
                 'Нет пользователя, на кого подписка.')
         try:
             super().save(user=user,
-                        following=following)
-        except IntegrityError:
-            raise serializers.ValidationError('Нельзя сохранить подписку.')   
+                         following=following)
+        except IntegrityError as e:
+            raise serializers.ValidationError(
+                f'Нельзя сохранить подписку: {e}.')

@@ -5,10 +5,8 @@ from rest_framework.pagination import LimitOffsetPagination  # type: ignore
 from django.shortcuts import get_object_or_404  # type: ignore
 from rest_framework.permissions import IsAuthenticated  # type: ignore
 from django.contrib.auth import get_user_model  # type: ignore
-from django.http import JsonResponse, Http404  # type: ignore
-from rest_framework.exceptions import (MethodNotAllowed,  # type: ignore
-                                       ParseError)
-from django.db.utils import IntegrityError  # type: ignore
+from django.http import JsonResponse  # type: ignore
+from rest_framework.exceptions import (MethodNotAllowed)  # type: ignore
 
 from posts.models import Post, Group
 from .serializers import (CommentSerializer, FollowSerializer,
@@ -62,8 +60,8 @@ class GroupViewSet(PermissionsMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
 
-    # Если убрать этот раздел, то падает 1 тест.
-    # Тогда при попытке создать группу возвращается ошибка 400 вместо 405.
+    # Если убрать этот раздел, то падает 1 тест, так как
+    # при попытке создать группу возвращается ошибка 400 вместо 405.
     def create(self, request):
         """Доступны только безопасные методы."""
         raise MethodNotAllowed('POST', 'Создание групп запрещено.')
@@ -92,21 +90,6 @@ class FollowView(generics.ListCreateAPIView):
     def get_queryset(self):
         """Список подписок пользователя."""
         return self.request.user.follows
-
-    # def perform_create(self, serializer):
-    #     """Создание подписки."""
-    #     user = self.request.user
-    #     data = self.request.data
-    #     following_name = data.get('following')
-    #     try:
-    #         following = get_object_or_404(User, username=following_name)
-    #     except Http404:
-    #         raise ParseError('Нет пользователя, на кого подписка.')
-    #     try:
-    #         serializer.save(user=user,
-    #                         following=following)
-    #     except IntegrityError:
-    #         raise ParseError('Нельзя сохранить подписку.')   
 
 
 def page_not_found(request, exception) -> JsonResponse:
