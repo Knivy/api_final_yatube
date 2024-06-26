@@ -7,11 +7,12 @@ from rest_framework.permissions import IsAuthenticated  # type: ignore
 from rest_framework.response import Response  # type: ignore
 from django.contrib.auth import get_user_model  # type: ignore
 from django.http import JsonResponse, Http404  # type: ignore
+from rest_framework.exceptions import MethodNotAllowed  # type: ignore
 
 from posts.models import Post, Group, Follow
 from .serializers import (CommentSerializer, FollowSerializer,
                           PostSerializer, GroupSerializer)
-from .permissions import IsAuthorOrReadOnly
+from .permissions import IsAuthenticatedAuthorOrReadOnly
 
 User = get_user_model()
 
@@ -19,7 +20,7 @@ User = get_user_model()
 class PermissionsMixin(viewsets.ModelViewSet):
     """Миксин разрешений."""
 
-    permission_classes = (IsAuthorOrReadOnly,)
+    permission_classes = (IsAuthenticatedAuthorOrReadOnly,)
 
 
 class PostViewSet(PermissionsMixin, viewsets.ModelViewSet):
@@ -60,21 +61,23 @@ class GroupViewSet(PermissionsMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
 
+    # Если убрать этот раздел, то падает 1 тест.
+    # Тогда при попытке создать группу возвращается ошибка 400 вместо 405.
     def create(self, request):
         """Доступны только безопасные методы."""
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        raise MethodNotAllowed('POST', 'Создание групп запрещено.')
 
     def update(self, request, pk=None):
         """Доступны только безопасные методы."""
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        raise MethodNotAllowed('UPDATE', 'Замена групп запрещена.')
 
     def partial_update(self, request, pk=None):
         """Доступны только безопасные методы."""
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        raise MethodNotAllowed('PUT', 'Редактирование групп запрещено.')
 
     def destroy(self, request, pk=None):
         """Доступны только безопасные методы."""
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        raise MethodNotAllowed('DELETE', 'Удаление групп запрещено.')
 
 
 class FollowView(generics.ListCreateAPIView):
@@ -89,9 +92,9 @@ class FollowView(generics.ListCreateAPIView):
         """Получение пользователей и их имён."""
         user = self.request.user
         username = user.username
-        data = self.request.data
-        if data and isinstance(data, dict):
-            following_name = data.get('following')
+        request_data = self.request.data
+        if request_data and isinstance(request_data, dict):
+            following_name = request_data.get('following')
             if not following_name:
                 following = None
             try:
@@ -108,8 +111,9 @@ class FollowView(generics.ListCreateAPIView):
         """Создание подписки."""
         user, username, following, following_name = self.get_users()
         if (not following or username == following_name
-           or Follow.objects.filter(user=user, following=following)):
+           or user.follows.filter(following=following)):
             return Response(status=status.HTTP_400_BAD_REQUEST)
+        # Вызываю родительский метод.
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):

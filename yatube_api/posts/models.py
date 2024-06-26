@@ -17,11 +17,11 @@ class Group(models.Model):
         verbose_name='Описание',
     )
 
-    def __str__(self):
-        return self.title
-
     class Meta:
         verbose_name = 'Группы'
+
+    def __str__(self):
+        return self.title
 
 
 class Post(models.Model):
@@ -40,11 +40,11 @@ class Post(models.Model):
         Group, on_delete=models.CASCADE, related_name='group_posts',
         verbose_name='Группа', blank=True, null=True)
 
-    def __str__(self):
-        return self.text
-
     class Meta:
         verbose_name = 'Посты'
+
+    def __str__(self):
+        return self.text
 
 
 class Comment(models.Model):
@@ -76,3 +76,9 @@ class Follow(models.Model):
 
     class Meta:
         verbose_name = 'Подписки'
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(user__ne=F('following__user')) | models.Q(following__isnull=True),
+                name='user_not_equal_to_following'
+            )
+        ]
