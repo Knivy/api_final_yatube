@@ -59,6 +59,9 @@ class FollowSerializer(serializers.ModelSerializer):
 
     def save(self, *args, **kwargs):
         """Сохранение подписки."""
+        # Попытки перенести этот код в validate упираются в то,
+        # что тут всё равно нужны эти пользователи и надо заново
+        # прокручивать этот код в функции. А тут он один раз.
         user = None
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
