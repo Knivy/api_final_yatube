@@ -93,20 +93,20 @@ class FollowView(generics.ListCreateAPIView):
         """Список подписок пользователя."""
         return self.request.user.follows
 
-    def perform_create(self, serializer):
-        """Создание подписки."""
-        user = self.request.user
-        data = self.request.data
-        following_name = data.get('following')
-        try:
-            following = get_object_or_404(User, username=following_name)
-        except Http404:
-            raise ParseError('Нет пользователя, на кого подписка.')
-        try:
-            serializer.save(user=user,
-                            following=following)
-        except IntegrityError:
-            raise ParseError('Нельзя сохранить подписку.')   
+    # def perform_create(self, serializer):
+    #     """Создание подписки."""
+    #     user = self.request.user
+    #     data = self.request.data
+    #     following_name = data.get('following')
+    #     try:
+    #         following = get_object_or_404(User, username=following_name)
+    #     except Http404:
+    #         raise ParseError('Нет пользователя, на кого подписка.')
+    #     try:
+    #         serializer.save(user=user,
+    #                         following=following)
+    #     except IntegrityError:
+    #         raise ParseError('Нельзя сохранить подписку.')   
 
 
 def page_not_found(request, exception) -> JsonResponse:
