@@ -84,7 +84,7 @@ class Follow(models.Model):
         constraints = [
             # Нельзя подписаться на себя.
             models.CheckConstraint(
-                            check=~Q(user=F('following')),
-                            name='no_self_follow'
-                        ),
+                check=~Q(user=F('following')),
+                name='no_self_follow'
+            ),
         ]
