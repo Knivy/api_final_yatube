@@ -1,15 +1,16 @@
 """Контроллеры."""
 
-from rest_framework import viewsets, generics, status, filters  # type: ignore
+from rest_framework import viewsets, generics, filters  # type: ignore
 from rest_framework.pagination import LimitOffsetPagination  # type: ignore
 from django.shortcuts import get_object_or_404  # type: ignore
 from rest_framework.permissions import IsAuthenticated  # type: ignore
-from rest_framework.response import Response  # type: ignore
 from django.contrib.auth import get_user_model  # type: ignore
 from django.http import JsonResponse, Http404  # type: ignore
-from rest_framework.exceptions import MethodNotAllowed  # type: ignore
+from rest_framework.exceptions import (MethodNotAllowed,  # type: ignore
+                                       ParseError)
+from django.db.utils import IntegrityError  # type: ignore
 
-from posts.models import Post, Group, Follow
+from posts.models import Post, Group
 from .serializers import (CommentSerializer, FollowSerializer,
                           PostSerializer, GroupSerializer)
 from .permissions import IsAuthenticatedAuthorOrReadOnly
@@ -91,15 +92,21 @@ class FollowView(generics.ListCreateAPIView):
     def get_queryset(self):
         """Список подписок пользователя."""
         return self.request.user.follows
-    
+
     def perform_create(self, serializer):
         """Создание подписки."""
         user = self.request.user
-        data = self.request.POST.get('data')
+        data = self.request.data
         following_name = data.get('following')
-        following = get_object_or_404(User, username=following_name)
-        serializer.save(user=user,
-                        following=following)
+        try:
+            following = get_object_or_404(User, username=following_name)
+        except Http404:
+            raise ParseError('Нет пользователя, на кого подписка.')
+        try:
+            serializer.save(user=user,
+                            following=following)
+        except IntegrityError:
+            raise ParseError('Нельзя сохранить подписку.')   
 
 
 def page_not_found(request, exception) -> JsonResponse:
