@@ -57,11 +57,8 @@ class FollowSerializer(serializers.ModelSerializer):
         model = Follow
         fields = ('user', 'following')
 
-    def save(self, *args, **kwargs):
-        """Сохранение подписки."""
-        # Попытки перенести этот код в validate упираются в то,
-        # что тут всё равно нужны эти пользователи и надо заново
-        # прокручивать этот код в функции. А тут он один раз.
+    def validate(self, data_to_validate):
+        """Валидация данных."""
         user = None
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
@@ -81,6 +78,20 @@ class FollowSerializer(serializers.ModelSerializer):
         except Http404:
             raise serializers.ValidationError(
                 'Нет пользователя, на кого подписка.')
+        # data_to_validate приходит пустым и не уходит в save.
+        # self.initial_data нельзя редактировать.
+        # self.data и self.validated_data нельзя редактировать
+        # до окончания валидации.
+        # Поэтому тут создан новый словарь.
+        self.user_data = {}
+        self.user_data['user'] = user
+        self.user_data['following'] = following
+        return data_to_validate
+
+    def save(self, *args, **kwargs):
+        """Сохранение подписки."""
+        user = self.user_data['user']
+        following = self.user_data['following']
         try:
             super().save(user=user,
                          following=following)
