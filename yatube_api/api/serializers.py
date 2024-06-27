@@ -43,30 +43,47 @@ class GroupSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class UserSerializerField(serializers.SlugRelatedField):
+    def get_queryset(self):
+        username = self.slug_field
+        return User.objects.filter(username=username)
+
+
 class FollowSerializer(serializers.ModelSerializer):
     """Сериализатор подписок."""
 
     user = serializers.SlugRelatedField(
-        slug_field='username', read_only=True,
-    )
+        slug_field='username', read_only=True)
     following = serializers.SlugRelatedField(
-        slug_field='username', read_only=True,
-    )
+        slug_field='username', read_only=True)
 
     class Meta:
         model = Follow
         fields = ('user', 'following')
 
-    def validate(self, data_to_validate):
-        """Валидация данных."""
+    def get_request(self):
         request = None
         if self and hasattr(self, 'context'):
             request = self.context.get('request')
+        if not request:
+            raise serializers.ValidationError('Нет запроса.')
+        return request
+    
+    def get_user(self):
+        request = self.get_request()
         user = None
         if request and hasattr(request, 'user'):
             user = request.user
+        return user
+
+    def validate_user(self, value):
+        user = self.get_user()
         if not user:
             raise serializers.ValidationError('Не указан подписчик.')
+        return user
+    
+    def get_following(self):
+        request = self.get_request()
         request_data = None
         if hasattr(request, 'data'):
             request_data = request.data
@@ -80,23 +97,21 @@ class FollowSerializer(serializers.ModelSerializer):
         except Http404:
             raise serializers.ValidationError(
                 'Нет пользователя, на кого подписка.')
-        # data_to_validate приходит пустым и не уходит в save.
-        # self.initial_data нельзя редактировать.
-        # self.data и self.validated_data нельзя редактировать
-        # до окончания валидации.
-        # Поэтому тут создан новый словарь.
-        self.user_data = {}
-        self.user_data['user'] = user
-        self.user_data['following'] = following
+        return following
+
+    def validate(self, data_to_validate):
+        """Валидация данных."""
+        user = self.get_user()
+        following = self.get_following()
+        if user.username == following.username:
+            raise serializers.ValidationError('Нельзя подписаться на себя.')
+        if user.follows.filter(following=following):
+            raise serializers.ValidationError('Подписка уже существует.')
         return data_to_validate
 
     def save(self, *args, **kwargs):
         """Сохранение подписки."""
-        user = self.user_data['user']
-        following = self.user_data['following']
-        try:
-            super().save(user=user,
-                         following=following)
-        except IntegrityError as e:
-            raise serializers.ValidationError(
-                f'Нельзя сохранить подписку: {e}.')
+        user = self.get_user()
+        following = self.get_following()
+        super().save(user=user,
+                    following=following)
