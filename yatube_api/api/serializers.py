@@ -59,8 +59,10 @@ class FollowSerializer(serializers.ModelSerializer):
 
     def validate(self, data_to_validate):
         """Валидация данных."""
+        request = None
+        if self and hasattr(self, 'context'):
+            request = self.context.get('request')
         user = None
-        request = self.context.get('request')
         if request and hasattr(request, 'user'):
             user = request.user
         if not user:
