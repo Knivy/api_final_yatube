@@ -6,12 +6,12 @@ from django.shortcuts import get_object_or_404  # type: ignore
 from rest_framework.permissions import IsAuthenticated  # type: ignore
 from django.contrib.auth import get_user_model  # type: ignore
 from django.http import JsonResponse  # type: ignore
-from rest_framework.exceptions import (MethodNotAllowed)  # type: ignore
 
 from posts.models import Post, Group
 from .serializers import (CommentSerializer, FollowSerializer,
                           PostSerializer, GroupSerializer)
-from .permissions import IsAuthenticatedAuthorOrReadOnly
+from .permissions import (IsAuthenticatedAuthorOrReadOnly,
+                          ReadOnlyMethodsPermission)
 
 User = get_user_model()
 
@@ -20,6 +20,12 @@ class PermissionsMixin(viewsets.ModelViewSet):
     """Миксин разрешений."""
 
     permission_classes = (IsAuthenticatedAuthorOrReadOnly,)
+
+
+class PermissionsReadOnlyMixin(viewsets.ModelViewSet):
+    """Миксин разрешений только на чтение."""
+
+    permission_classes = (ReadOnlyMethodsPermission,)
 
 
 class PostViewSet(PermissionsMixin, viewsets.ModelViewSet):
@@ -54,29 +60,11 @@ class CommentViewSet(PermissionsMixin, viewsets.ModelViewSet):
         return self.get_post().comments.all()
 
 
-class GroupViewSet(PermissionsMixin, viewsets.ReadOnlyModelViewSet):
+class GroupViewSet(PermissionsReadOnlyMixin, viewsets.ReadOnlyModelViewSet):
     """Обработка групп."""
 
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
-
-    # Если убрать этот раздел, то падает 1 тест, так как
-    # при попытке создать группу возвращается ошибка 400 вместо 405.
-    def create(self, request):
-        """Доступны только безопасные методы."""
-        raise MethodNotAllowed('POST', 'Создание групп запрещено.')
-
-    def update(self, request, pk=None):
-        """Доступны только безопасные методы."""
-        raise MethodNotAllowed('UPDATE', 'Замена групп запрещена.')
-
-    def partial_update(self, request, pk=None):
-        """Доступны только безопасные методы."""
-        raise MethodNotAllowed('PUT', 'Редактирование групп запрещено.')
-
-    def destroy(self, request, pk=None):
-        """Доступны только безопасные методы."""
-        raise MethodNotAllowed('DELETE', 'Удаление групп запрещено.')
 
 
 class FollowView(generics.ListCreateAPIView):
@@ -89,7 +77,7 @@ class FollowView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         """Список подписок пользователя."""
-        return self.request.user.follows
+        return self.request.user.follows.all()
 
 
 def page_not_found(request, exception) -> JsonResponse:
