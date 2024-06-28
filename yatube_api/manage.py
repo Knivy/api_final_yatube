@@ -3,7 +3,7 @@
 import os
 import sys
 from django.core.management import (  # type: ignore
-            execute_from_command_line,)
+    execute_from_command_line,)
 
 
 def main():
