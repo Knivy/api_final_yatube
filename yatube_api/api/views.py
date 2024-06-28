@@ -5,7 +5,9 @@ from rest_framework.pagination import LimitOffsetPagination  # type: ignore
 from django.shortcuts import get_object_or_404  # type: ignore
 from rest_framework.permissions import IsAuthenticated  # type: ignore
 from django.contrib.auth import get_user_model  # type: ignore
-from django.http import JsonResponse  # type: ignore
+from django.http import JsonResponse, Http404  # type: ignore
+from rest_framework.exceptions import ParseError  # type: ignore
+from django.db.utils import IntegrityError  # type: ignore
 
 from posts.models import Post, Group
 from .serializers import (CommentSerializer, FollowSerializer,
@@ -78,6 +80,19 @@ class FollowView(generics.ListCreateAPIView):
     def get_queryset(self):
         """Список подписок пользователя."""
         return self.request.user.follows.all()
+
+    def perform_create(self, serializer):
+        """Создание подписки. Валидация в модели."""
+        user = self.request.user
+        following_name = self.request.data.get('following')
+        try:
+            following = get_object_or_404(User, username=following_name)
+        except Http404 as error:
+            raise ParseError('Нет пользователя, на кого подписка.') from error
+        try:
+            serializer.save(user=user, following=following)
+        except IntegrityError as error:
+            raise ParseError('Нельзя сохранить подписку.') from error
 
 
 def page_not_found(request, exception) -> JsonResponse:

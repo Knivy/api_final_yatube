@@ -77,12 +77,14 @@ class Follow(models.Model):
 
     class Meta:
         verbose_name = 'Подписки'
-        # Может быть только одна связь между пользователями.
-        unique_together = ('user', 'following')
         constraints = [
             # Нельзя подписаться на себя.
             models.CheckConstraint(
                 check=~Q(user=F('following')),
                 name='no_self_follow'
             ),
+            # Может быть только одна связь между пользователями.
+            models.UniqueConstraint(
+                fields=['user', 'following'],
+                name='unique_user_following'),
         ]
