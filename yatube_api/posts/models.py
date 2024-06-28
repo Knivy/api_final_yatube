@@ -85,6 +85,6 @@ class Follow(models.Model):
             ),
             # Может быть только одна связь между пользователями.
             models.UniqueConstraint(
-                fields=['user', 'following'],
+                fields=('user', 'following'),
                 name='unique_user_following'),
         ]
