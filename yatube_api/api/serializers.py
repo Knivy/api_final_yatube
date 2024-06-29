@@ -41,8 +41,6 @@ class GroupSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-# Я перешла в 9 когорту и, возможно, поэтому
-# Вам не видно обсуждений.
 class FollowSerializer(serializers.ModelSerializer):
     """Сериализатор подписок."""
 
